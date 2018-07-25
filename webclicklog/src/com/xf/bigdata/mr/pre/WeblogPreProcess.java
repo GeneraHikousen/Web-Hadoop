@@ -17,6 +17,11 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import com.xf.bigdata.mrBean.WebLogBean;
 import com.xf.bigdata.mrBean.WebLogParser;
 
+/**
+ * 对web日志预处理
+ * @author XF
+ *
+ */
 public class WeblogPreProcess {
 
 	private static class WeblogPreProcessMapper extends Mapper<LongWritable, Text, NullWritable, WebLogBean>{
@@ -41,7 +46,7 @@ public class WeblogPreProcess {
 			String line = value.toString();
 			WebLogBean logbean = WebLogParser.parser(line);
 //			由于数据量太少，不去除静态资源链接
-//			WebLogParser.filtStaticResource(logbean, pages);
+			WebLogParser.filtStaticResource(logbean, pages);
 			if(logbean.isValid()) {
 				context.write(NullWritable.get(),logbean);
 			}
@@ -56,7 +61,7 @@ public class WeblogPreProcess {
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(WebLogBean.class);
 		FileInputFormat.setInputPaths(job, new Path("D:\\BaiduNetdiskDownload\\旧版\\day12\\作业题\\input"));
-		FileOutputFormat.setOutputPath(job, new Path("D:\\BaiduNetdiskDownload\\旧版\\day12\\作业题\\output2"));
+		FileOutputFormat.setOutputPath(job, new Path("D:\\BaiduNetdiskDownload\\旧版\\day12\\作业题\\output"));
 		job.waitForCompletion(true);
 	}
 }

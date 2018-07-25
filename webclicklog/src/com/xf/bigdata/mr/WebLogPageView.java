@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.UUID;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -19,23 +20,21 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.junit.Test;
 
 import com.xf.bigdata.mrBean.PageViewBean;
 import com.xf.bigdata.mrBean.WebLogBean;
 
-//true194.237.142.21-2013-09-19 06:26:36/wp-content/uploads/2013/07/rstudio-login.png3040"-""Mozilla/4.0 (compatible;)"
-/*
- 	private String session;
-	private String remote_addr;
-	private String timestr;
-	private String request;
-	private int step;
-	private String staylong;
-	private String referal;
-	private String useragent;
-	private String bytes_send;
-	private String status;
+
+/**
+ * 从贴源表中获取PageView表的MapReduce程序
+ * 贴源表：
+ *  见{@link com.xf.bigdata.mrBean.WebLogBean}
+ *  一行的内容如下：
+ * 	true194.237.142.21-2013-09-19 06:26:36/wp-content/uploads/2013/07/rstudio-login.png3040"-""Mozilla/4.0 (compatible;)"
+ * Pageview表：
+ *  见 {@link com.xf.bigdata.mrBean.PageViewBean}
+ * @author XF
+ *
  */
 public class WebLogPageView {
 	private static class PageViewMapper extends Mapper<LongWritable, Text, Text, WebLogBean> {
@@ -66,7 +65,13 @@ public class WebLogPageView {
 				throws IOException, InterruptedException {
 			list.clear();
 			for (WebLogBean bean : values) {
-				list.add(bean);
+				WebLogBean webLogBean = new WebLogBean();
+				try {
+					BeanUtils.copyProperties(webLogBean, bean);
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+				list.add(webLogBean);
 			}
 			// 按照时间大小排序
 			Collections.sort(list, new Comparator<WebLogBean>() {
@@ -122,7 +127,7 @@ public class WebLogPageView {
 					sessionID = UUID.randomUUID().toString();
 				}
 				if(i==list.size()-1) {	//如果当前是最后一条记录，直接输出
-					pageViewBean.setAll(sessionID, bean.getRemote_addr(), bean.getTime_local(), bean.getRemote_user(),
+					pageViewBean.setAll(sessionID, bean.getRemote_addr(), bean.getTime_local(), bean.getRequest(),
 							step, DEFAULT_STAYTIME, bean.getHttp_referer(), bean.getHttp_user_agent(),
 							bean.getBody_bytes_sent(), String.valueOf(bean.getStatus()));
 					context.write(NullWritable.get(), pageViewBean);
@@ -138,31 +143,8 @@ public class WebLogPageView {
 			} catch (ParseException e) {
 				e.printStackTrace();
 			}
-			return date2.getTime() - date1.getTime();
+			return Math.abs(date2.getTime() - date1.getTime());
 		}
-	}
-	
-	@Test
-	public void test() {
-		ArrayList<WebLogBean> list = new ArrayList<>();
-		list.add(new WebLogBean());
-		list.add(new WebLogBean());
-		list.get(0).setTime_local("2013-09-18 13:47:35");
-		list.get(1).setTime_local("2013-09-18 11:04:18");
-		Collections.sort(list, new Comparator<WebLogBean>() {
-
-			@Override
-			public int compare(WebLogBean o1, WebLogBean o2) {
-				if (o1 == o2) // as same as: o1==null&&o2==null
-					return 0;
-				if (o1 == null)
-					return -1;
-				if (o2 == null)
-					return 1;
-				return o1.getTime_local().compareTo(o2.getTime_local());
-			}
-		});
-		System.out.println(list);
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -179,7 +161,8 @@ public class WebLogPageView {
 		job.setOutputKeyClass(NullWritable.class);
 		job.setOutputValueClass(PageViewBean.class);
 		
-		FileInputFormat.setInputPaths(job, new Path("D:\\BaiduNetdiskDownload\\旧版\\day12\\作业题\\output2"));
+		//本地模式跑MR
+		FileInputFormat.setInputPaths(job, new Path("D:\\BaiduNetdiskDownload\\旧版\\day12\\作业题\\output"));
 		FileOutputFormat.setOutputPath(job, new Path("D:\\BaiduNetdiskDownload\\旧版\\day12\\作业题\\pageview"));
 
 		job.waitForCompletion(true);
